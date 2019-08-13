@@ -35,4 +35,6 @@ dependencies {
     //rxjava
     api 'io.reactivex.rxjava2:rxandroid:2.1.0'
     api 'io.reactivex.rxjava2:rxjava:2.2.5'
+    //引入J神的rxrelay2，出现异常仍然可以处理
+    api 'com.jakewharton.rxrelay2:rxrelay:2.0.0'
 }

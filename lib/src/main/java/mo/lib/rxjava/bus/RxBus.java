@@ -1,82 +1,52 @@
 package mo.lib.rxjava.bus;
 
-import io.reactivex.Flowable;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Consumer;
-import io.reactivex.processors.FlowableProcessor;
-import io.reactivex.processors.PublishProcessor;
+import com.jakewharton.rxrelay2.PublishRelay;
+import com.jakewharton.rxrelay2.Relay;
+
+import io.reactivex.Observable;
 
 /**
  * @ author：mo
- * @ data：2019/8/6:10:31
- * @ 功能：有压背处理的Rxbus
+ * @ data：2019/8/13:16:10
+ * @ 功能：网上扒的，据说能处理异常，只是为了能使，
+ * 注意：1、不需要注册、解除注册，尤其是不能解除注册，会收不到消息
+ *      2、eventbus能注册、解除，貌似是在注解的时候又判断注册了一遍，并且把接收的行为重新激活了
  */
 public class RxBus {
-    private FlowableProcessor<Object> bus;
+    private static volatile RxBus instance;
+    private final Relay<Object> mBus;
 
-    private RxBus() {
-        //把非线程安全的PublishSubject包装成线程安全的SerializedSubject
-        bus = PublishProcessor.create().toSerialized();
+    public RxBus() {
+        this.mBus = PublishRelay.create().toSerialized();
     }
 
-    public static RxBus getDefault() {
-        return SingletonHolder.INSTANCE;
-    }
-
-    private static class SingletonHolder {
-        public static volatile RxBus INSTANCE = new RxBus();
-    }
-
-    /**
-     * 发送事件
-     *
-     * @param event 事件对象
-     */
-    public void post(Object event) {
-        if (hasSubscribers()) {
-            bus.onNext(event);
+    public static RxBus getInstance() {
+        if (instance == null) {
+            synchronized (RxBus.class) {
+                if (instance == null) {
+                    instance = Holder.BUS;
+                }
+            }
         }
+        return instance;
+    }
+    public void post(Object obj) {
+        mBus.accept(obj);
     }
 
-    /**
-     * 监听事件
-     *
-     * @return 特定类型的Observable
-     */
-    public Flowable<Object> observe() {
-        return bus;
+    public <T> Observable<T> toObservable(Class<T> tClass) {
+        return  mBus.ofType(tClass);
     }
 
-    /**
-     * 监听事件
-     *
-     * @param event 事件对象
-     * @param <T>   事件类型
-     * @return 特定类型的Observable
-     */
-    public <T> Flowable<T> observe(Class<T> event) {
-        return bus.ofType(event);
+    public Observable<Object> toObservable() {
+        return mBus;
     }
 
-    public <T> Disposable observe(Class<T> event,Consumer<T> consumer) {
-        return observe(event).subscribe(consumer);
+    public boolean hasObservers() {
+        return mBus.hasObservers();
     }
 
-    /**
-     * 解除注册
-     */
-    public void unregisterAll() {
-        if (hasSubscribers()) {
-            bus.onComplete();
-        }
-
+    private static class Holder {
+        private static final RxBus BUS = new RxBus();
     }
-
-    /**
-     * 是否注册了
-     */
-    public boolean hasSubscribers() {
-        return bus.hasSubscribers();
-    }
-
 }
